@@ -10,6 +10,14 @@
 # symlink, so it stays out of the public tree.
 .claude
 
+# Python build artifacts. Listed before any .py existed would have been
+# speculative; this repository now carries tooling under scripts/.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
 # OS and editor cruft
 .DS_Store
 Thumbs.db

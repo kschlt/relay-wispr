@@ -11,11 +11,11 @@ boundary.
 
 ```
 ┌──────────────┐     ┌───────────────────┐     ┌──────────────────────┐
-│  Wispr Flow  │────►│    relay-wispr    │────►│  downstream consumer │
-│  MCP server  │     │  (this project)   │     │  (routing, storage,  │
-└──────────────┘     └─────────┬─────────┘     │   processing — not   │
-                               │               │   this project)      │
-                     ┌─────────▼─────────┐     └──────────────────────┘
+│  Wispr Flow  │────►│    relay-wispr    │────►│  Relay               │
+│  MCP server  │     │  (this project)   │     │  (routing, delivery  │
+└──────────────┘     └─────────┬─────────┘     │   — not this project)│
+                               │               └──────────────────────┘
+                     ┌─────────▼─────────┐
                      │  payload storage  │
                      │  (raw, verbatim)  │
                      └───────────────────┘
@@ -28,9 +28,20 @@ Two things leave the adapter, and the split is the whole design:
 - **Records** — small, canonical, source-independent — go to the consumer, each
   carrying a reference to its payload rather than the payload itself.
 
-The consumer is deliberately unspecified here. It is whatever the operator
-runs: a routing layer, a document store, a plain directory. The contract is the
-record shape, not the consumer's identity.
+### The consumer
+
+relay-wispr is built as an adapter for **Relay**, which owns routing and
+delivery once a record crosses the boundary. What Relay then does with a
+record — where it sends it, how it decides — is Relay's concern and is not
+described here.
+
+Relay is named because it is the reason this adapter exists, not because it is
+required. The contract is the record shape; the consumer's identity is not part
+of it. The same records are readable by a script, a document store, or a plain
+directory, and relay-wispr has no runtime dependency on Relay. A second capture
+vendor gets a second adapter emitting the same records — that substitutability
+is the whole point, and it would be lost if Relay's specifics leaked back across
+this line.
 
 ## Responsibilities
 

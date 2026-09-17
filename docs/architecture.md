@@ -3,6 +3,11 @@
 > Pre-alpha. This describes an intended design. No component below is
 > implemented, and the connector behaviour it assumes is not yet verified.
 
+This document is the readable synthesis. The decisions it rests on are recorded
+individually in [docs/adr/](adr/README.md), each with the alternatives that were
+weighed and rejected. Where the two overlap, **the ADR is the record** — it says
+why, and it says what would have to change to reverse it.
+
 ## Position in a pipeline
 
 relay-wispr occupies one narrow slot: **vendor-specific acquisition**. It sits
@@ -36,7 +41,7 @@ record — where it sends it, how it decides — is Relay's concern and is not
 described here.
 
 Relay is named because it is the reason this adapter exists, not because it is
-required. The contract is the record shape; the consumer's identity is not part
+required ([ADR 0006](adr/0006-relay-is-named-not-depended-on.md)). The contract is the record shape; the consumer's identity is not part
 of it. The same records are readable by a script, a document store, or a plain
 directory, and relay-wispr has no runtime dependency on Relay. A second capture
 vendor gets a second adapter emitting the same records — that substitutability
@@ -82,7 +87,8 @@ for a particular destination is the consumer's job.
 
 ## The context boundary
 
-The rule that most constrains the implementation:
+The rule that most constrains the implementation
+([ADR 0001](adr/0001-no-model-in-the-transport-path.md)):
 
 > **A model must never be asked to copy, reconstruct, or summarise a transcript
 > or note body in order to move it.**
@@ -100,7 +106,8 @@ that decision's context.
 
 ## State boundary
 
-The adapter is deliberately close to stateless.
+The adapter is deliberately close to stateless
+([ADR 0005](adr/0005-the-adapter-owns-no-collection-state.md)).
 
 It may **use** collection state to distinguish new items from seen ones, and it
 returns what a caller needs to advance that state. It does not own the
@@ -123,7 +130,8 @@ a safe response to all of them.
 
 ## Failure posture
 
-A missing capability is a **result**, not an exception to swallow. If the
+A missing capability is a **result**, not an exception to swallow
+([ADR 0003](adr/0003-a-missing-capability-is-a-result.md)). If the
 connector cannot do something the adapter needs — no incremental search, no
 stable identifier, no full-body read — the adapter says so, naming what is
 missing. It does not substitute a degraded path silently.
@@ -133,9 +141,11 @@ than it appears to, discovered later, with an unknowable gap in the record.
 
 ## Verification comes first
 
-The design above assumes connector capabilities that **have not been measured**.
-Before implementation, each of these must be established independently for
-meetings and for Scratchpad notes:
+The design above assumes connector capabilities that **have not been measured**
+([ADR 0002](adr/0002-verify-before-designing.md)). Before implementation, each of
+these must be established independently for meetings and for Scratchpad notes —
+separately, because a finding on one surface is not evidence about the other
+([ADR 0004](adr/0004-each-source-surface-is-verified-independently.md)):
 
 - What search and filtering the MCP server supports, and whether results can be
   scoped incrementally.

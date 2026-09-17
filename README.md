@@ -129,6 +129,7 @@ Read it before pointing anything at real data.
 | [VISION.md](VISION.md) | Where this is going and how we would know it worked |
 | [docs/architecture.md](docs/architecture.md) | Boundaries, responsibilities, data flow |
 | [docs/privacy-and-security.md](docs/privacy-and-security.md) | Data handling, threat boundary, honest limits |
+| [docs/adr/](docs/adr/README.md) | Architecture decisions, one per record, and why each was taken |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to work on this while it is pre-alpha |
 | [SECURITY.md](SECURITY.md) | Reporting a vulnerability |
 

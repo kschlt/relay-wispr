@@ -41,11 +41,19 @@ brings its marker along — the common case, and the one that happens by
 accident. It does not catch a marker that was stripped, and it cannot recognise
 real source data that was never marked; no heuristic for transcript-shaped or
 name-shaped text is attempted, because it would produce false confidence and
-false refusals alike. It sees only *tracked* files, so locally it judges what is
-staged or committed rather than what is merely written to disk. Every other rule
-above is unmechanised and rests on your care. Treat the guard as a seatbelt, not
-a vault: a check believed to be complete replaces the attention that does the
-real work.
+false refusals alike.
+
+**What it reads.** It sees only files git *tracks*, and for each one it reads the
+bytes on disk: git supplies the paths, the working tree supplies the content. So
+locally a marker is caught as soon as it is written into a tracked file, before
+it is ever staged — and a marker that survives only in an already-committed
+version, stripped from the working tree since, is not caught at all. In CI the
+checkout is the commit, so there the two coincide and the guard sees exactly what
+the pull request would land.
+
+Every other rule above is unmechanised and rests on your care. Treat the guard as
+a seatbelt, not a vault: a check believed to be complete replaces the attention
+that does the real work.
 
 ### The interpreter the gate runs on
 

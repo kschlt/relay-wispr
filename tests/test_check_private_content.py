@@ -13,7 +13,8 @@ deliberate: a test that imported the constant would still pass on a guard lookin
 for the wrong string.
 
 Each test builds a throwaway git repository with the real guard tracked inside
-it, because the guard reads the tracked-file list of the repository it sits in.
+it, because the guard reads the tracked-file list of the repository it sits in
+and then reads each of those paths from the working tree.
 """
 
 from __future__ import annotations
@@ -108,6 +109,31 @@ def test_clean_tree_passes_and_guard_ignores_itself(tmp_path: Path) -> None:
     result = run(tree)
 
     assert result.returncode == 0, result.stderr
+
+
+def test_unstaged_modification_to_a_tracked_file_is_refused(tmp_path: Path) -> None:
+    """The guard reads the working tree, not the index or the commit.
+
+    git supplies the paths and the disk supplies the bytes, so a marker written
+    into an already-tracked file is refused before anyone stages it. This is the
+    distinction the other tests cannot make: each of them stages its file before
+    running, so each would pass just the same against a guard that read staged
+    content instead. Pinning it here is what keeps the documented claim and the
+    behaviour from drifting apart again.
+    """
+    tree = build_tree(tmp_path)
+    git(tree, "commit", "-qm", "initial")
+    note = tree / "docs" / "public-note.md"
+    note.write_text(f"An ordinary public document.\n{MARKER}\n")
+
+    assert "docs/public-note.md" in git(tree, "diff", "--name-only").split(), (
+        "the modification must be unstaged, or this test asserts nothing"
+    )
+
+    result = run(tree)
+
+    assert result.returncode != 0, "an unstaged marker in a tracked file was accepted"
+    assert "docs/public-note.md" in result.stderr
 
 
 def test_self_exclusion_is_not_path_hardcoded(tmp_path: Path) -> None:

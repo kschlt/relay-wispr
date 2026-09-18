@@ -16,11 +16,18 @@ brings its marker along, which is the common case. It does not catch a marker
 that was deliberately or accidentally stripped, and it cannot recognise real
 content that was never marked — no heuristic for name-shaped or
 transcript-shaped text is attempted here, because it would produce false
-confidence and false refusals alike. It also sees only *tracked* files, so
-locally it judges what is staged or committed rather than what is merely written
-to disk; CI, which runs against the commit, sees everything the pull request
-would land. The honest claim is narrow: marked content cannot pass. The care
-that actually does the work is that findings are never written here at all.
+confidence and false refusals alike.
+
+**What it reads.** It sees only files git *tracks*, and for each one it reads the
+bytes on disk: git supplies the paths, the working tree supplies the content. So
+locally a marker is caught as soon as it is written into a tracked file, before
+it is ever staged — and a marker that survives only in an already-committed
+version, stripped from the working tree since, is not caught at all. In CI the
+checkout is the commit, so there the two coincide and the guard sees exactly what
+the pull request would land.
+
+The honest claim is narrow: marked content cannot pass. The care that actually
+does the work is that findings are never written here at all.
 
 Read-only by construction: it refuses, and never edits or redacts a file.
 """

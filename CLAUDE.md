@@ -29,6 +29,44 @@ Never commit, in files, commit messages, issues, or PR descriptions:
 If you are unsure whether something is safe to publish, leave it out and say
 why.
 
+### The one rule with a mechanism behind it
+
+`make quality` refuses the tree when a tracked file carries the marker that the
+maintainer's private findings are required to open with (`scripts/check_private_content.py`).
+It runs in the gate, so it fires locally and in CI on every pull request without
+anyone choosing to run it, and the refusal names the file.
+
+**What it catches and what it does not.** It catches a copied finding that
+brings its marker along — the common case, and the one that happens by
+accident. It does not catch a marker that was stripped, and it cannot recognise
+real source data that was never marked; no heuristic for transcript-shaped or
+name-shaped text is attempted, because it would produce false confidence and
+false refusals alike.
+
+**What it reads.** It sees only files git *tracks*, and for each one it reads the
+bytes on disk: git supplies the paths, the working tree supplies the content. So
+locally a marker is caught as soon as it is written into a tracked file, before
+it is ever staged — and a marker that survives only in an already-committed
+version, stripped from the working tree since, is not caught at all. In CI the
+checkout is the commit, so there the two coincide and the guard sees exactly what
+the pull request would land.
+
+Every other rule above is unmechanised and rests on your care. Treat the guard as
+a seatbelt, not a vault: a check believed to be complete replaces the attention
+that does the real work.
+
+### The interpreter the gate runs on
+
+`make quality` refuses any interpreter below the floor ADR 0008 declares,
+naming the required version and the one it found. It is checked when the
+Makefile is parsed, so every target passes through it and there is nothing to
+forget to call.
+
+If it refuses, point it at a conforming interpreter. Do not lower the floor, do
+not add a skip, and do not special-case the environment — each of those puts
+the defect back somewhere harder to see. The floor is an accepted decision, so
+changing it means a superseding ADR, not an edit to the Makefile.
+
 ## Accuracy rules
 
 - **Do not describe unverified behaviour as supported.** Wispr MCP capabilities
@@ -70,6 +108,7 @@ docs/architecture.md             boundaries, responsibilities, data flow
 docs/privacy-and-security.md     data handling and its honest limits
 docs/adr/                        architecture decision records (see below)
 scripts/gen_adr_index.py         regenerates docs/adr/README.md
+scripts/check_private_content.py refuses a tracked file carrying the private marker
 ```
 
 `scripts/` holds repository tooling, not product code. The "no code" status
@@ -84,7 +123,7 @@ format, the four states, and the rules — read it before adding or changing one
 Four things to get right:
 
 - **Never edit `docs/adr/README.md`.** It is generated. Change frontmatter and run
-  `python3 scripts/gen_adr_index.py`. `--check` exits non-zero when it is stale.
+  `make adr-index`. The quality gate checks it and refuses a stale index.
 - **Never rewrite an accepted ADR to say something else.** Its decision is a
   historical fact. Changing course means a new ADR that supersedes it. Fixing a
   typo or a dead link is not changing the decision.

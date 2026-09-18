@@ -13,9 +13,11 @@ resolves its ADR directory from its own location.
 
 from __future__ import annotations
 
+import ast
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 
@@ -82,7 +84,7 @@ def test_title_heading_match_accepted(tmp_path: Path) -> None:
 
     Both halves matter. Every heading in this repository reads
     `# ADR NNNN — <title>` while the frontmatter carries only the title, so a
-    naive equality check would refuse all eleven records. And a record with no
+    naive equality check would refuse all twelve records. And a record with no
     heading is as much a defect as one whose heading disagrees — tolerating it
     silently would reproduce the bug in a new place, which is why the accepting
     half is asserted together with that refusal rather than on its own, where it
@@ -92,7 +94,7 @@ def test_title_heading_match_accepted(tmp_path: Path) -> None:
 
     clean = run(tree, "--check")
     assert clean.returncode == 0, clean.stderr
-    assert "11 record(s)" in clean.stdout
+    assert "12 record(s)" in clean.stdout
 
     target = adr(tree, "0001")
     edit(target, "# ADR 0001 — No model in the transport path\n", "")
@@ -197,6 +199,87 @@ def test_existing_refusals_still_fire(tmp_path: Path) -> None:
     assert not failures, "\n".join(failures)
 
 
+# --- what the coverage check counts, and how it accounts for it -------------
+#
+# `test_every_refusal_is_covered` is built on these three, and the proofs below
+# exercise them directly rather than by inspection. Each was written failing
+# first, and each was then observed catching the mutation it exists to catch.
+
+
+def count_raise_sites(source: str) -> int:
+    """How many places `source` raises — read structurally, not textually.
+
+    This replaces `source.count("raise AdrError")`, which was wrong in both
+    directions: a refusal built in one statement and raised in the next is a
+    raise it misses, and the same words in a docstring are a raise it invents.
+    Every raise statement counts, not only the ones spelled `raise AdrError`: a
+    refusal expressed some other way still needs something asserting it, and
+    counting it here demands a row rather than excusing one.
+    """
+    return sum(1 for node in ast.walk(ast.parse(source)) if isinstance(node, ast.Raise))
+
+
+def dedicated_refusal_scenarios() -> dict[str, tuple[Callable[[Path], str], str]]:
+    """Dedicated test name -> (build the offending tree, expected message fragment).
+
+    These are the refusals no inventory row can reach, because none of them is
+    reachable by editing one record's text: the filename-pattern refusal needs a
+    rename, the empty-directory refusal needs no records at all, and the
+    duplicate-id refusal needs a second file. Each setup returns the path text its
+    refusal must name, so the dedicated tests carry the same "names what it
+    refused" assertion the rows carry.
+
+    The empty-directory refusal has no offending FILE — the directory it searched
+    is what it refused, and naming that is the same guarantee, not a weaker one.
+    """
+
+    def rename_one(tree: Path) -> str:
+        adr(tree, "0007").rename(tree / "docs" / "adr" / "0007_Bad_Name.md")
+        return "0007_Bad_Name.md"
+
+    def empty_the_directory(tree: Path) -> str:
+        for record in (tree / "docs" / "adr").glob("0*.md"):
+            record.unlink()
+        return str((tree / "docs" / "adr").resolve())
+
+    def add_a_twin(tree: Path) -> str:
+        twin = tree / "docs" / "adr" / "0003-a-second-record-with-the-same-id.md"
+        twin.write_text(adr(tree, "0003").read_text())
+        return twin.name
+
+    return {
+        "test_filename_pattern_is_refused": (rename_one, "filename must be"),
+        "test_empty_directory_is_refused": (empty_the_directory, "no ADRs found"),
+        "test_duplicate_id_is_refused": (add_a_twin, "already used by"),
+    }
+
+
+def covered_refusals(namespace: Mapping[str, object] | None = None) -> int:
+    """Inventory rows, plus the dedicated refusal tests that actually exist.
+
+    Counting the dedicated tests rather than allowing a constant `+ 3` is what
+    ties the allowance to them: delete one and this drops by one, so
+    `test_every_refusal_is_covered` fails instead of quietly covering less.
+    `namespace` exists so that deletion can be simulated without editing the file.
+    """
+    ns = globals() if namespace is None else namespace
+    present = sum(1 for name in dedicated_refusal_scenarios() if callable(ns.get(name)))
+    return len(REFUSALS) + present
+
+
+def assert_dedicated_refusal(tmp_path: Path, name: str) -> None:
+    """Run one dedicated refusal scenario and assert it refuses, naming what it refused."""
+    setup, fragment = dedicated_refusal_scenarios()[name]
+    tree = build_tree(tmp_path)
+    offender = setup(tree)
+
+    result = run(tree, "--check")
+
+    assert result.returncode != 0, "accepted a tree it should refuse"
+    assert fragment in result.stderr
+    assert offender in result.stderr, f"refusal does not name {offender}"
+
+
 def test_every_refusal_is_covered(tmp_path: Path) -> None:
     """The inventory tracks the module's refusal count.
 
@@ -205,54 +288,108 @@ def test_every_refusal_is_covered(tmp_path: Path) -> None:
     to fail when someone adds a `raise` without adding a row, which is exactly the
     gap a behavioural test cannot see.
 
-    Three raise sites are covered by dedicated tests below rather than by a row,
-    because none is reachable by editing one record's text: the filename-pattern
-    refusal needs a rename, the empty-directory refusal needs no records at all, and
-    the duplicate-id refusal needs a second file.
+    It counts structurally and accounts by existence, because both halves of the
+    claim were once fooled by mutation: a two-step raise slipped past a literal
+    string count, and the dedicated tests were allowed for by a hand-kept `+ 3`
+    that stayed 3 after one of them was deleted. The raise sites reached by
+    something other than editing one record's text are named by
+    `dedicated_refusal_scenarios`, which is also what the allowance counts.
     """
-    source = SCRIPT.read_text()
-    raises = source.count("raise AdrError")
-    covered = len(REFUSALS) + 3
+    raises = count_raise_sites(SCRIPT.read_text())
+    covered = covered_refusals()
     assert covered == raises, (
-        f"{raises} raise sites, {covered} covered. Add a REFUSALS row (or a dedicated "
-        "test, and bump the constant here) for the new refusal."
+        f"{raises} raise sites, {covered} covered. Add a REFUSALS row for the new "
+        "refusal — or, if it cannot be reached by editing one record, a dedicated "
+        "test and an entry for it in dedicated_refusal_scenarios()."
     )
+
+
+def test_raise_counting_is_structural() -> None:
+    """Refusals are counted from the parse tree, not from the characters.
+
+    A literal `source.count("raise AdrError")` is wrong in both directions, and
+    both directions are asserted here: a refusal built in one statement and
+    raised in the next is a raise the count misses, and the same words sitting in
+    a docstring are a raise the count invents. Throwaway source is used rather
+    than the real generator, because the generator is not this item's subject and
+    must not grow a contrived raise to be counted.
+    """
+    two_step = "def f():\n    err = AdrError('x')\n    raise err\n"
+    prose = (
+        'def f():\n    """Callers see this when we raise AdrError."""\n    return 1\n'
+    )
+
+    assert count_raise_sites(two_step) == 1, "a two-step raise was not counted"
+    assert count_raise_sites(prose) == 0, "prose mentioning the words was counted"
+
+    # The literal count answers both the other way round. Asserting that here is
+    # what stops this test passing vacuously if the old counting ever comes back.
+    assert two_step.count("raise AdrError") == 0
+    assert prose.count("raise AdrError") == 1
+
+
+def test_dedicated_tests_are_accounted_by_existence() -> None:
+    """Deleting a dedicated refusal test breaks the coverage check.
+
+    The allowance for refusals reached by a rename, an empty directory or a second
+    file used to be the literal `+ 3`, which stays 3 after one of those tests is
+    deleted — the refusal then has nothing asserting it and the suite is green.
+    Deletion is simulated against a namespace rather than performed on the file,
+    so the check is exercised for every one of them in a single run.
+    """
+    raises = count_raise_sites(SCRIPT.read_text())
+    assert covered_refusals() == raises, "coverage does not hold before any deletion"
+
+    for name in dedicated_refusal_scenarios():
+        assert callable(globals().get(name)), f"{name} is accounted for but not defined"
+        without = {k: v for k, v in globals().items() if k != name}
+        assert covered_refusals(without) != raises, (
+            f"deleting {name} left the coverage check satisfied"
+        )
+
+
+def test_dedicated_refusals_name_their_file(tmp_path: Path) -> None:
+    """Every dedicated refusal names what it refused, as the inventory rows do.
+
+    A refusal that did not name its file was a real defect in this tool once, so
+    the guarantee should not depend on which path a refusal happens to be reached
+    by. Asserted here independently of the shared helper the dedicated tests call,
+    so dropping the assertion from that helper fails this test too.
+
+    The empty-directory refusal has no offending FILE — the directory it searched
+    is what it refused, and naming that is the same guarantee, not a weaker one.
+    """
+    failures = []
+    for n, (name, (setup, fragment)) in enumerate(
+        dedicated_refusal_scenarios().items()
+    ):
+        tree = build_tree(tmp_path / f"dedicated{n}")
+        offender = setup(tree)
+        result = run(tree, "--check")
+        if result.returncode == 0:
+            failures.append(f"{name}: accepted a tree it should refuse")
+        elif fragment not in result.stderr:
+            failures.append(
+                f"{name}: refused for another reason: {result.stderr.strip()[:120]}"
+            )
+        elif offender not in result.stderr:
+            failures.append(f"{name}: refusal does not name {offender}")
+    assert not failures, "\n".join(failures)
 
 
 def test_filename_pattern_is_refused(tmp_path: Path) -> None:
     """Reached by a rename, so it has no inventory row."""
-    tree = build_tree(tmp_path)
-    adr(tree, "0007").rename(tree / "docs" / "adr" / "0007_Bad_Name.md")
-
-    result = run(tree, "--check")
-
-    assert result.returncode != 0
-    assert "filename must be" in result.stderr
-    assert "0007_Bad_Name.md" in result.stderr
+    assert_dedicated_refusal(tmp_path, "test_filename_pattern_is_refused")
 
 
 def test_empty_directory_is_refused(tmp_path: Path) -> None:
     """Reached by removing every record, so it has no inventory row."""
-    tree = build_tree(tmp_path)
-    for f in (tree / "docs" / "adr").glob("0*.md"):
-        f.unlink()
-
-    result = run(tree, "--check")
-
-    assert result.returncode != 0
-    assert "no ADRs found" in result.stderr
+    assert_dedicated_refusal(tmp_path, "test_empty_directory_is_refused")
 
 
 def test_duplicate_id_is_refused(tmp_path: Path) -> None:
     """Two files sharing a four-digit prefix — needs a second file, not an edit."""
-    tree = build_tree(tmp_path)
-    twin = tree / "docs" / "adr" / "0003-a-second-record-with-the-same-id.md"
-    twin.write_text(adr(tree, "0003").read_text())
-
-    result = run(tree, "--check")
-
-    assert result.returncode != 0
-    assert "already used by" in result.stderr
+    assert_dedicated_refusal(tmp_path, "test_duplicate_id_is_refused")
 
 
 def test_runs_under_optimised_interpreter(tmp_path: Path) -> None:

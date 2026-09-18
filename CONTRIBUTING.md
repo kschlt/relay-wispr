@@ -20,6 +20,16 @@ make quality
 It needs `ruff` and `pytest` at the pinned versions in `requirements-dev.txt`,
 and it checks rather than rewrites, so a green run means the tree was already
 clean. `make help` lists the rest.
+[ADR 0008](docs/adr/0008-implementation-runtime-python.md) also names `uv`, but
+nothing here requires or checks it — `requirements-dev.txt` records which of the
+toolchain declarations are enforced and which are deliberately advisory.
+
+The gate also refuses to run at all on an interpreter below the version this
+project targets, naming the version it requires and the one it found. There is
+no skip and no exception: a green run on an older interpreter is a local
+verdict CI can contradict, which is worse than not having run it. If your
+default `python3` is older than the floor, point the gate at a newer one — the
+refusal says how.
 
 The immediate work is **verifying what the Wispr Flow MCP server can actually
 do** — for discovery, reading, pagination, and stable identity, treating
@@ -58,7 +68,8 @@ depend on those answers, so making them now would be guessing.
 - **Open an issue first** for anything beyond a typo. At this stage, agreement
   on the boundary matters more than the diff.
 - **Use a branch and a pull request.** The default branch takes no direct
-  pushes; every change after the initial commit lands through a PR.
+  pushes; every change after the initial commit lands through a PR
+  ([ADR 0009](docs/adr/0009-changes-reach-main-through-pull-requests.md)).
 - **One concern per PR**, with a description saying what changed and why.
 
 ## Changing a decision
@@ -71,15 +82,17 @@ useful thing it carries. Changing course means a **new** record that supersedes
 the old one, naming it. [ADR 0000](docs/adr/0000-record-architecture-decisions.md)
 has the format and the rules.
 
-Two practical notes: `docs/adr/README.md` is generated — edit frontmatter and run
-`python3 scripts/gen_adr_index.py`, never the index itself. And if a change you
-are proposing contradicts an accepted ADR, say so explicitly and name it.
-Silently working around one is the failure the directory exists to prevent.
+Two practical notes: `docs/adr/README.md` is generated — edit frontmatter and
+run `make adr-index`, never the index itself. And if a change you are proposing
+contradicts an accepted ADR, say so explicitly and name it. Silently working
+around one is the failure the directory exists to prevent.
 
 ## Documentation standards
 
 The documents in this repository are the product right now, so they are held to
-a few rules:
+a few rules. How the prose is formatted is not among them — that is left to
+review rather than checked by a gate
+([ADR 0011](docs/adr/0011-prose-formatting-is-left-to-review.md)). The rules:
 
 - **Do not claim unverified behaviour.** If connector support is unknown, the
   text says it is unknown. "Supports Scratchpad notes" is not something this
@@ -90,6 +103,15 @@ a few rules:
   meeting title, an account identifier, or any other real source data into this
   repository — including in issues and PR descriptions. Invent an example
   instead.
+
+  One narrow part of this is checked rather than trusted: `make quality` refuses
+  the tree when a tracked file carries the marker that the maintainer's private
+  verification findings are required to open with, and names the file. It
+  catches a finding copied in with its header attached — the accident, not the
+  decision. It does not catch a stripped marker, it cannot recognise real
+  content that was never marked, and it deliberately makes no attempt to guess
+  at transcript-shaped text, which would refuse innocent changes and still miss
+  real ones. The rest of this rule rests on care, as it did before.
 - **Nothing personal or private.** No credentials, no private hostnames, no
   local filesystem paths, no private repository names, no personal
   infrastructure details. This repository is public and permanent.

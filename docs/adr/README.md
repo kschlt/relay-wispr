@@ -20,5 +20,6 @@ are in [ADR 0000](0000-record-architecture-decisions.md).
 | [0008](0008-implementation-runtime-python.md) | Implementation runtime is Python | accepted | 2026-09-17 | `toolchain` |
 | [0009](0009-changes-reach-main-through-pull-requests.md) | Changes reach main through pull requests | accepted | 2026-09-14 | `process`, `git` |
 | [0010](0010-the-public-repository-carries-no-real-source-data.md) | The public repository carries no real source data | accepted | 2026-09-14 | `privacy`, `documentation` |
+| [0011](0011-prose-formatting-is-left-to-review.md) | Prose formatting is left to review | accepted | 2026-09-18 | `documentation`, `process` |
 
-11 record(s).
+12 record(s).

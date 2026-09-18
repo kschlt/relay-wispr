@@ -82,10 +82,10 @@ useful thing it carries. Changing course means a **new** record that supersedes
 the old one, naming it. [ADR 0000](docs/adr/0000-record-architecture-decisions.md)
 has the format and the rules.
 
-Two practical notes: `docs/adr/README.md` is generated — edit frontmatter and run
-`python3 scripts/gen_adr_index.py`, never the index itself. And if a change you
-are proposing contradicts an accepted ADR, say so explicitly and name it.
-Silently working around one is the failure the directory exists to prevent.
+Two practical notes: `docs/adr/README.md` is generated — edit frontmatter and
+run `make adr-index`, never the index itself. And if a change you are proposing
+contradicts an accepted ADR, say so explicitly and name it. Silently working
+around one is the failure the directory exists to prevent.
 
 ## Documentation standards
 

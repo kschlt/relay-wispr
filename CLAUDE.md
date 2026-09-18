@@ -115,7 +115,7 @@ format, the four states, and the rules — read it before adding or changing one
 Four things to get right:
 
 - **Never edit `docs/adr/README.md`.** It is generated. Change frontmatter and run
-  `python3 scripts/gen_adr_index.py`. `--check` exits non-zero when it is stale.
+  `make adr-index`. The quality gate checks it and refuses a stale index.
 - **Never rewrite an accepted ADR to say something else.** Its decision is a
   historical fact. Changing course means a new ADR that supersedes it. Fixing a
   typo or a dead link is not changing the decision.

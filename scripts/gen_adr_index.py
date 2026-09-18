@@ -64,42 +64,55 @@ class AdrError(Exception):
     """A malformed ADR or a broken rule. Carries a message fit to print."""
 
 
-def split_frontmatter(text: str, name: str) -> str:
-    """The frontmatter block alone, or raise.
+def _document_parts(text: str, name: str) -> tuple[str, str]:
+    """(frontmatter block, body). PRIVATE — the pair never crosses a public boundary.
 
-    Returns only the block: the body has no reader here, and returning it invited
-    `parse_frontmatter(*split_frontmatter(...))`, which silently passed the body as
-    the filename and made every parse error print the whole document.
+    Both public readers take one thing and return one thing. That is the lesson of a
+    real defect: a public `(block, body)` return was once spread into
+    `parse_frontmatter(block, name)`, passing the body where the filename belonged, so
+    every parse error printed the whole document instead of naming the file.
     """
     if not text.startswith("---\n"):
         raise AdrError(f"{name}: no YAML frontmatter (file must start with '---')")
     end = text.find("\n---\n", 3)
     if end == -1:
         raise AdrError(f"{name}: frontmatter is not closed by a '---' line")
-    return text[4:end]
+    return text[4:end], text[end + 5 :]
 
 
-HEADING_RE = re.compile(
-    r"^#[ \t]+ADR[ \t]+(\d{4})[ \t]+\u2014[ \t]+(.+?)[ \t]*$", re.MULTILINE
-)
+def split_frontmatter(text: str, name: str) -> str:
+    """The frontmatter block alone, or raise."""
+    return _document_parts(text, name)[0]
+
+
+HEADING_RE = re.compile(r"#[ \t]+ADR[ \t]+(\d{4})[ \t]+\u2014[ \t]+(.+?)[ \t]*")
 
 
 def heading_of(text: str, name: str) -> tuple[str, str]:
     """The `# ADR NNNN — <title>` heading's id and title, or raise.
 
-    Parsed from the body rather than carried out of `split_frontmatter`, which
-    deliberately returns the frontmatter block alone: handing the body back is
-    what previously let the body be passed where a filename was expected.
+    The heading must be the FIRST non-blank line of the BODY. Both halves are
+    load-bearing, and each closes a way this check can be fooled:
 
-    A record with NO heading raises rather than being skipped. Tolerating it would
-    reproduce, in a new place, the silent acceptance this check exists to close.
+    - **Of the body.** Scanning the whole document let a `#` comment inside the
+      frontmatter pose as the heading, so a record whose real heading had been
+      deleted was accepted — fail-open, and precisely the silent acceptance this
+      check exists to close.
+    - **First.** Anywhere-in-the-body would match a heading quoted inside a fenced
+      example — which ADR 0000 itself contains — refusing an honest record and
+      naming the quoted id.
+
+    All eleven records already satisfy it, so the strict form costs nothing now and
+    is what a new record gets written against.
     """
-    m = HEADING_RE.search(text)
+    body = _document_parts(text, name)[1]
+    first = next((line for line in body.splitlines() if line.strip()), "")
+    m = HEADING_RE.fullmatch(first.strip())
     if not m:
         raise AdrError(
-            f"{name}: no `# ADR NNNN \u2014 <title>` heading found in the body. "
-            "ADR 0000 requires one, and its title is what the frontmatter title is "
-            "checked against."
+            f"{name}: the body must open with its `# ADR NNNN \u2014 <title>` heading; "
+            f"found {first.strip()[:60]!r}. ADR 0000 requires it, and its title is what "
+            "the frontmatter title is checked against."
         )
     return m.group(1), m.group(2)
 
@@ -171,8 +184,6 @@ def load() -> list[dict[str, object]]:
             )
         if not DATE_RE.match(str(fm["date"])):
             raise AdrError(f"{path.name}: date {fm['date']!r} is not YYYY-MM-DD")
-        if not fm["title"]:
-            raise AdrError(f"{path.name}: title is empty")
         if (prev := seen.get(str(fm["id"]))) is not None:
             raise AdrError(f"{path.name}: id {fm['id']} already used by {prev}")
         seen[str(fm["id"])] = path.name

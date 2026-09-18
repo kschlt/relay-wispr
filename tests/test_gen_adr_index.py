@@ -117,9 +117,11 @@ REFUSALS = [
 def test_existing_refusals_still_fire(tmp_path: Path) -> None:
     """Every fault the generator refuses, refused, with the file named.
 
-    Asserted over the COMPLETE inventory rather than the pre-existing subset, so
-    the list is red until the new refusal exists and stays a regression net
-    afterwards. A refusal that does not name its offending file was a real defect
+    The inventory covers one fault per refusal FAMILY, not every raise site — the
+    script has more raises than rows, and saying "complete" here would be the same
+    overclaim this item removes from the script's own docstring. It is asserted
+    together with the new refusal, so the list was red until that existed and stays
+    a regression net afterwards. A refusal that does not name its offending file was a real defect
     here once, so the filename assertion is not decoration.
 
     The clean path is checked in the same place: idempotent regeneration is the
@@ -157,3 +159,68 @@ def test_runs_under_optimised_interpreter(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert "AttributeError" not in result.stderr
+
+
+def test_frontmatter_comment_cannot_pose_as_a_heading(tmp_path: Path) -> None:
+    """A `#` line inside the frontmatter is not the body heading.
+
+    The first version of this check scanned the whole document, so a record whose
+    real heading had been deleted was ACCEPTED as long as a frontmatter comment
+    looked like one — fail-open, and the exact silent acceptance the check exists
+    to close. Anchoring to the first non-blank line of the body is what fixes it,
+    and this test is what keeps it fixed.
+    """
+    tree = build_tree(tmp_path)
+    target = adr(tree, "0003")
+    edit(
+        target,
+        "tags: [verification, failure-posture]",
+        "tags: [verification, failure-posture]\n# ADR 0003 — A missing capability is a result",
+    )
+    edit(
+        target,
+        "# ADR 0003 — A missing capability is a result\n\n## Decision",
+        "\n## Decision",
+    )
+
+    result = run(tree, "--check")
+
+    assert result.returncode != 0, "a frontmatter comment passed as the body heading"
+    assert "0003-a-missing-capability-is-a-result.md" in result.stderr
+    assert "body must open" in result.stderr
+
+
+def test_one_sided_supersession_is_refused(tmp_path: Path) -> None:
+    """Reciprocity is the one numbered ADR 0000 rule the script claims to enforce.
+
+    It needs two coordinated edits, so it does not fit the single-edit inventory
+    above and would otherwise be the claim with no test behind it.
+    """
+    tree = build_tree(tmp_path)
+    edit(adr(tree, "0002"), "status: accepted", "status: superseded")
+    edit(adr(tree, "0002"), "superseded-by: none", "superseded-by: 0005")
+
+    one_sided = run(tree, "--check")
+    assert one_sided.returncode != 0
+    assert "reciprocal" in one_sided.stderr
+
+    edit(adr(tree, "0005"), "supersedes: []", "supersedes: [0002]")
+    assert run(tree).returncode == 0, "a completed reciprocal link was still refused"
+
+
+def test_a_quoted_heading_in_the_body_is_not_mistaken_for_the_real_one(
+    tmp_path: Path,
+) -> None:
+    """ADR 0000 documents the heading format inside a fenced example.
+
+    Matching anywhere in the body would refuse that honest record and name the
+    quoted id. The real tree already contains this case, so the assertion is that
+    it keeps passing.
+    """
+    tree = build_tree(tmp_path)
+    assert (
+        "ADR NNNN"
+        in (tree / "docs" / "adr" / "0000-record-architecture-decisions.md").read_text()
+    )
+
+    assert run(tree, "--check").returncode == 0

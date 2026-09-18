@@ -16,7 +16,10 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable, Mapping
 from pathlib import Path
+
+import pytest
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -197,6 +200,32 @@ def test_existing_refusals_still_fire(tmp_path: Path) -> None:
     assert not failures, "\n".join(failures)
 
 
+# --- what the coverage check counts, and how it accounts for it -------------
+#
+# `test_every_refusal_is_covered` is built on these three, and the proofs below
+# exercise them directly. They are unimplemented here on purpose: the tests that
+# name them are written failing first, so each one is observed catching the
+# mutation it exists to catch before it is made to pass.
+
+
+def count_raise_sites(source: str) -> int:
+    """How many places `source` raises — read structurally, not textually."""
+    raise NotImplementedError("ADR-COV: structural raise counting")
+
+
+def dedicated_refusal_scenarios() -> dict[str, tuple[Callable[[Path], str], str]]:
+    """Dedicated test name -> (build the offending tree, expected message fragment).
+
+    The setup returns the path text its refusal must name.
+    """
+    raise NotImplementedError("ADR-COV: dedicated refusal inventory")
+
+
+def covered_refusals(namespace: Mapping[str, object] | None = None) -> int:
+    """Inventory rows, plus the dedicated refusal tests that actually exist."""
+    raise NotImplementedError("ADR-COV: existence-based accounting")
+
+
 def test_every_refusal_is_covered(tmp_path: Path) -> None:
     """The inventory tracks the module's refusal count.
 
@@ -217,6 +246,82 @@ def test_every_refusal_is_covered(tmp_path: Path) -> None:
         f"{raises} raise sites, {covered} covered. Add a REFUSALS row (or a dedicated "
         "test, and bump the constant here) for the new refusal."
     )
+
+
+@pytest.mark.xfail(strict=True, reason="counting is not structural yet")
+def test_raise_counting_is_structural() -> None:
+    """Refusals are counted from the parse tree, not from the characters.
+
+    A literal `source.count("raise AdrError")` is wrong in both directions, and
+    both directions are asserted here: a refusal built in one statement and
+    raised in the next is a raise the count misses, and the same words sitting in
+    a docstring are a raise the count invents. Throwaway source is used rather
+    than the real generator, because the generator is not this item's subject and
+    must not grow a contrived raise to be counted.
+    """
+    two_step = "def f():\n    err = AdrError('x')\n    raise err\n"
+    prose = (
+        'def f():\n    """Callers see this when we raise AdrError."""\n    return 1\n'
+    )
+
+    assert count_raise_sites(two_step) == 1, "a two-step raise was not counted"
+    assert count_raise_sites(prose) == 0, "prose mentioning the words was counted"
+
+    # The literal count answers both the other way round. Asserting that here is
+    # what stops this test passing vacuously if the old counting ever comes back.
+    assert two_step.count("raise AdrError") == 0
+    assert prose.count("raise AdrError") == 1
+
+
+@pytest.mark.xfail(strict=True, reason="the allowance is a hand-kept constant")
+def test_dedicated_tests_are_accounted_by_existence() -> None:
+    """Deleting a dedicated refusal test breaks the coverage check.
+
+    The allowance for refusals reached by a rename, an empty directory or a second
+    file used to be the literal `+ 3`, which stays 3 after one of those tests is
+    deleted — the refusal then has nothing asserting it and the suite is green.
+    Deletion is simulated against a namespace rather than performed on the file,
+    so the check is exercised for every one of them in a single run.
+    """
+    raises = count_raise_sites(SCRIPT.read_text())
+    assert covered_refusals() == raises, "coverage does not hold before any deletion"
+
+    for name in dedicated_refusal_scenarios():
+        assert callable(globals().get(name)), f"{name} is accounted for but not defined"
+        without = {k: v for k, v in globals().items() if k != name}
+        assert covered_refusals(without) != raises, (
+            f"deleting {name} left the coverage check satisfied"
+        )
+
+
+@pytest.mark.xfail(strict=True, reason="two dedicated tests skip the assertion")
+def test_dedicated_refusals_name_their_file(tmp_path: Path) -> None:
+    """Every dedicated refusal names what it refused, as the inventory rows do.
+
+    A refusal that did not name its file was a real defect in this tool once, so
+    the guarantee should not depend on which path a refusal happens to be reached
+    by. Asserted here independently of the shared helper the dedicated tests call,
+    so dropping the assertion from that helper fails this test too.
+
+    The empty-directory refusal has no offending FILE — the directory it searched
+    is what it refused, and naming that is the same guarantee, not a weaker one.
+    """
+    failures = []
+    for n, (name, (setup, fragment)) in enumerate(
+        dedicated_refusal_scenarios().items()
+    ):
+        tree = build_tree(tmp_path / f"dedicated{n}")
+        offender = setup(tree)
+        result = run(tree, "--check")
+        if result.returncode == 0:
+            failures.append(f"{name}: accepted a tree it should refuse")
+        elif fragment not in result.stderr:
+            failures.append(
+                f"{name}: refused for another reason: {result.stderr.strip()[:120]}"
+            )
+        elif offender not in result.stderr:
+            failures.append(f"{name}: refusal does not name {offender}")
+    assert not failures, "\n".join(failures)
 
 
 def test_filename_pattern_is_refused(tmp_path: Path) -> None:

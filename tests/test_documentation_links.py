@@ -25,8 +25,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
-
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -87,7 +85,6 @@ def test_every_relative_link_resolves():
     assert not broken, "links that resolve nowhere:\n" + "\n".join(broken)
 
 
-@pytest.mark.xfail(strict=True, reason="0008, 0009 and 0010 carry no inbound link")
 def test_every_decision_record_is_linked_from_a_document():
     records = decision_records()
     assert records, "no decision records found at all — suspect this collector"

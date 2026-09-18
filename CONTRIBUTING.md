@@ -19,9 +19,10 @@ make quality
 
 It needs `ruff` and `pytest` at the pinned versions in `requirements-dev.txt`,
 and it checks rather than rewrites, so a green run means the tree was already
-clean. `make help` lists the rest. ADR 0008 also names `uv`, but nothing here
-requires or checks it — `requirements-dev.txt` records which of the toolchain
-declarations are enforced and which are deliberately advisory.
+clean. `make help` lists the rest.
+[ADR 0008](docs/adr/0008-implementation-runtime-python.md) also names `uv`, but
+nothing here requires or checks it — `requirements-dev.txt` records which of the
+toolchain declarations are enforced and which are deliberately advisory.
 
 The gate also refuses to run at all on an interpreter below the version this
 project targets, naming the version it requires and the one it found. There is
@@ -67,7 +68,8 @@ depend on those answers, so making them now would be guessing.
 - **Open an issue first** for anything beyond a typo. At this stage, agreement
   on the boundary matters more than the diff.
 - **Use a branch and a pull request.** The default branch takes no direct
-  pushes; every change after the initial commit lands through a PR.
+  pushes; every change after the initial commit lands through a PR
+  ([ADR 0009](docs/adr/0009-changes-reach-main-through-pull-requests.md)).
 - **One concern per PR**, with a description saying what changed and why.
 
 ## Changing a decision

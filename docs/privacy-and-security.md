@@ -35,7 +35,8 @@ timestamps, errors. Not bodies.
 Connector authentication is the operator's responsibility, held in the
 environment or in the MCP client's own configuration. No credential, token, or
 account identifier belongs in this repository, in its history, in its issues, or
-in its documentation.
+in its documentation. Nor does any real source data
+([ADR 0010](adr/0010-the-public-repository-carries-no-real-source-data.md)).
 
 ### Payloads go only where the operator designated
 

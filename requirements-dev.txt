@@ -1,0 +1,7 @@
+# Development and CI tooling, pinned exactly.
+#
+# Exact pins, not ranges: ruff's formatter and lint rules change between
+# releases, so an unpinned ruff turns a green branch red with no commit behind
+# it. Bumping these is a deliberate change with its own diff.
+ruff==0.15.8
+pytest==9.0.2

@@ -68,7 +68,33 @@ SECURITY.md                      vulnerability reporting
 LICENSE                          Apache-2.0
 docs/architecture.md             boundaries, responsibilities, data flow
 docs/privacy-and-security.md     data handling and its honest limits
+docs/adr/                        architecture decision records (see below)
+scripts/gen_adr_index.py         regenerates docs/adr/README.md
 ```
+
+`scripts/` holds repository tooling, not product code. The "no code" status
+above is about the adapter: there is still no package, no CLI, and no library.
+
+## Architecture decisions
+
+Decisions live in `docs/adr/`, one decision per record, with YAML frontmatter and
+a status. [ADR 0000](docs/adr/0000-record-architecture-decisions.md) defines the
+format, the four states, and the rules — read it before adding or changing one.
+
+Four things to get right:
+
+- **Never edit `docs/adr/README.md`.** It is generated. Change frontmatter and run
+  `python3 scripts/gen_adr_index.py`. `--check` exits non-zero when it is stale.
+- **Never rewrite an accepted ADR to say something else.** Its decision is a
+  historical fact. Changing course means a new ADR that supersedes it. Fixing a
+  typo or a dead link is not changing the decision.
+- **Supersession is reciprocal** and the generator refuses a one-sided link.
+- **One decision per record.** Two arguments in one Consequences section means two
+  ADRs.
+
+Before proposing something that contradicts an accepted ADR, say so explicitly and
+name the ADR. Silently working around one is the failure this directory exists to
+prevent.
 
 ## Workflow tooling
 

@@ -10,7 +10,11 @@ is a suggestion:
   - a `superseded` ADR names its `superseded-by`, and a non-superseded one does not.
   - supersession is reciprocal: if A supersedes B, B is superseded-by A.
   - every referenced id exists.
-  - `title` agrees with the record's own `# ADR NNNN — ...` heading.
+  - `title` agrees with the record's own `# ADR NNNN — ...` heading, which must be
+    the first non-blank line of the body. That is STRICTER than ADR 0000's prose,
+    which requires the heading to exist without saying where; every record already
+    complies, and the tightening is recorded here because an unstated rule that
+    refuses a record is worse than a stated one.
   - the frontmatter is present, complete, and carries no unknown key.
   - the committed index is in sync with all of the above.
 
@@ -98,9 +102,10 @@ def heading_of(text: str, name: str) -> tuple[str, str]:
       frontmatter pose as the heading, so a record whose real heading had been
       deleted was accepted — fail-open, and precisely the silent acceptance this
       check exists to close.
-    - **First.** Anywhere-in-the-body would match a heading quoted inside a fenced
-      example — which ADR 0000 itself contains — refusing an honest record and
-      naming the quoted id.
+    - **First.** Anywhere-in-the-body would let a record whose body opens with
+      something else — a draft note, prose, a quoted example further down — satisfy
+      the rule on a heading that is not its own. No record in the tree does that
+      today; this is the half that is prospective rather than observed.
 
     All eleven records already satisfy it, so the strict form costs nothing now and
     is what a new record gets written against.

@@ -101,34 +101,79 @@ def test_title_heading_match_accepted(tmp_path: Path) -> None:
     assert "0001-no-model-in-the-transport-path.md" in missing.stderr
 
 
-REFUSALS = [
-    ("0003", "id: 0003", "id: 0099", "frontmatter id"),
-    ("0002", "status: accepted", "status: agreed", "status"),
-    ("0002", "status: accepted", "status: superseded", "superseded-by"),
-    ("0004", "superseded-by: none", "superseded-by: 0001", "superseded-by"),
-    ("0008", "tags: [toolchain]", "owner: someone", "unknown frontmatter key"),
-    ("0009", "date: 2026-09-14", "date: Sept 2026", "date"),
-    ("0009", "tags: [process, git]", "tags: process, git", "inline list"),
-    ("0005", "supersedes: []", "supersedes: [0042]", "unknown id"),
-    ("0001", "title: No model in the transport path", "title: Drifted", "heading"),
+# One row per `raise AdrError` in the generator. `test_every_refusal_is_covered`
+# below compares this inventory against the module's actual raise count, so a new
+# refusal added without a row fails the suite rather than going unasserted. Each
+# row is (edits, expected-fragment); edits are applied in order to one throwaway
+# tree, because several refusals need two coordinated changes to reach.
+REFUSALS: list[tuple[list[tuple[str, str, str]], str]] = [
+    ([("0003", "---\nid: 0003", "id: 0003")], "no YAML frontmatter"),
+    ([("0003", "\n---\n\n# ADR 0003", "\n\n# ADR 0003")], "not closed by"),
+    (
+        [
+            (
+                "0003",
+                "tags: [verification, failure-posture]",
+                "a bare line with no colon",
+            )
+        ],
+        "not a 'key: value' line",
+    ),
+    (
+        [("0003", "status: accepted", "status: accepted\nstatus: accepted")],
+        "duplicate key",
+    ),
+    ([("0009", "tags: [process, git]", "tags: process, git")], "inline list"),
+    ([("0008", "tags: [toolchain]", "owner: someone")], "unknown frontmatter key"),
+    ([("0004", "date: 2026-09-17\n", "")], "missing frontmatter key"),
+    ([("0001", "# ADR 0001 —", "# ADR 0002 —")], "heading id"),
+    (
+        [("0001", "title: No model in the transport path", "title: Drifted")],
+        "disagrees with the",
+    ),
+    (
+        [("0003", "id: 0003", "id: 0099"), ("0003", "# ADR 0003 —", "# ADR 0099 —")],
+        "filename prefix",
+    ),
+    ([("0002", "status: accepted", "status: agreed")], "is not one of"),
+    ([("0009", "date: 2026-09-14", "date: Sept 2026")], "is not YYYY-MM-DD"),
+    (
+        [("0002", "status: accepted", "status: superseded")],
+        "superseded but superseded-by is 'none'",
+    ),
+    ([("0004", "superseded-by: none", "superseded-by: 0001")], "but status is"),
+    (
+        [
+            ("0002", "status: accepted", "status: superseded"),
+            ("0002", "superseded-by: none", "superseded-by: 0042"),
+        ],
+        "superseded-by unknown id",
+    ),
+    ([("0005", "supersedes: []", "supersedes: [0042]")], "supersedes unknown id"),
+    (
+        [
+            ("0002", "status: accepted", "status: superseded"),
+            ("0002", "superseded-by: none", "superseded-by: 0005"),
+        ],
+        "reciprocal",
+    ),
+    ([("0005", "supersedes: []", "supersedes: [0002]")], "reciprocal"),
+    (
+        [("0003", "# ADR 0003 — A missing capability is a result\n", "")],
+        "body must open",
+    ),
 ]
 
 
 def test_existing_refusals_still_fire(tmp_path: Path) -> None:
-    """Every fault the generator refuses, refused, with the file named.
+    """Every refusal in the inventory fires, and names its offending file.
 
-    The inventory covers one fault per refusal FAMILY, not every raise site — the
-    script has more raises than rows, and saying "complete" here would be the same
-    overclaim this item removes from the script's own docstring. It is asserted
-    together with the new refusal, so the list was red until that existed and stays
-    a regression net afterwards. A refusal that does not name its offending file was a real defect
-    here once, so the filename assertion is not decoration.
-
-    The clean path is checked in the same place: idempotent regeneration is the
-    other half of "the generator does not silently produce a wrong index", and it
-    is only meaningful alongside the refusals that keep it honest.
+    A refusal that does not name its file was a real defect here once, so the
+    filename assertion is not decoration. Idempotent regeneration is asserted in
+    the same place: "does not silently produce a wrong index" has a clean half and
+    a refusing half, and they are only meaningful together.
     """
-    tree = build_tree(tmp_path)
+    tree = build_tree(tmp_path / "clean")
     index = tree / "docs" / "adr" / "README.md"
     before = index.read_text()
     assert run(tree, "--check").returncode == 0
@@ -136,19 +181,78 @@ def test_existing_refusals_still_fire(tmp_path: Path) -> None:
     assert index.read_text() == before, "regeneration is not idempotent"
 
     failures = []
-    for prefix, old, new, expected in REFUSALS:
-        case = build_tree(tmp_path / f"case-{len(failures)}-{prefix}-{expected[:12]}")
-        edit(adr(case, prefix), old, new)
+    for n, (edits, expected) in enumerate(REFUSALS):
+        case = build_tree(tmp_path / f"case{n}")
+        for prefix, old, new in edits:
+            edit(adr(case, prefix), old, new)
         result = run(case, "--check")
         if result.returncode == 0:
-            failures.append(f"{expected}: accepted a tree it should refuse")
+            failures.append(f"{expected!r}: accepted a tree it should refuse")
         elif expected not in result.stderr:
             failures.append(
-                f"{expected}: refused, but the message does not say why: {result.stderr.strip()}"
+                f"{expected!r}: refused for another reason: {result.stderr.strip()[:120]}"
             )
         elif ".md" not in result.stderr:
-            failures.append(f"{expected}: refusal does not name the offending file")
+            failures.append(f"{expected!r}: refusal does not name the offending file")
     assert not failures, "\n".join(failures)
+
+
+def test_every_refusal_is_covered(tmp_path: Path) -> None:
+    """The inventory tracks the module's refusal count.
+
+    This is the one test that reads the source rather than the behaviour, and it
+    does so deliberately: the claim under test IS about source coverage. Its job is
+    to fail when someone adds a `raise` without adding a row, which is exactly the
+    gap a behavioural test cannot see.
+
+    Three raise sites are covered by dedicated tests below rather than by a row,
+    because none is reachable by editing one record's text: the filename-pattern
+    refusal needs a rename, the empty-directory refusal needs no records at all, and
+    the duplicate-id refusal needs a second file.
+    """
+    source = SCRIPT.read_text()
+    raises = source.count("raise AdrError")
+    covered = len(REFUSALS) + 3
+    assert covered == raises, (
+        f"{raises} raise sites, {covered} covered. Add a REFUSALS row (or a dedicated "
+        "test, and bump the constant here) for the new refusal."
+    )
+
+
+def test_filename_pattern_is_refused(tmp_path: Path) -> None:
+    """Reached by a rename, so it has no inventory row."""
+    tree = build_tree(tmp_path)
+    adr(tree, "0007").rename(tree / "docs" / "adr" / "0007_Bad_Name.md")
+
+    result = run(tree, "--check")
+
+    assert result.returncode != 0
+    assert "filename must be" in result.stderr
+    assert "0007_Bad_Name.md" in result.stderr
+
+
+def test_empty_directory_is_refused(tmp_path: Path) -> None:
+    """Reached by removing every record, so it has no inventory row."""
+    tree = build_tree(tmp_path)
+    for f in (tree / "docs" / "adr").glob("0*.md"):
+        f.unlink()
+
+    result = run(tree, "--check")
+
+    assert result.returncode != 0
+    assert "no ADRs found" in result.stderr
+
+
+def test_duplicate_id_is_refused(tmp_path: Path) -> None:
+    """Two files sharing a four-digit prefix — needs a second file, not an edit."""
+    tree = build_tree(tmp_path)
+    twin = tree / "docs" / "adr" / "0003-a-second-record-with-the-same-id.md"
+    twin.write_text(adr(tree, "0003").read_text())
+
+    result = run(tree, "--check")
+
+    assert result.returncode != 0
+    assert "already used by" in result.stderr
 
 
 def test_runs_under_optimised_interpreter(tmp_path: Path) -> None:
@@ -167,8 +271,7 @@ def test_frontmatter_comment_cannot_pose_as_a_heading(tmp_path: Path) -> None:
     The first version of this check scanned the whole document, so a record whose
     real heading had been deleted was ACCEPTED as long as a frontmatter comment
     looked like one — fail-open, and the exact silent acceptance the check exists
-    to close. Anchoring to the first non-blank line of the body is what fixes it,
-    and this test is what keeps it fixed.
+    to close. Scoping the scan to the body is what fixes it; this keeps it fixed.
     """
     tree = build_tree(tmp_path)
     target = adr(tree, "0003")
@@ -190,37 +293,32 @@ def test_frontmatter_comment_cannot_pose_as_a_heading(tmp_path: Path) -> None:
     assert "body must open" in result.stderr
 
 
-def test_one_sided_supersession_is_refused(tmp_path: Path) -> None:
-    """Reciprocity is the one numbered ADR 0000 rule the script claims to enforce.
+def test_a_heading_later_in_the_body_does_not_satisfy_the_rule(tmp_path: Path) -> None:
+    """The heading must be FIRST in the body, not merely present somewhere in it.
 
-    It needs two coordinated edits, so it does not fit the single-edit inventory
-    above and would otherwise be the claim with no test behind it.
+    This guards the half of the rule that scoping alone does not. Restore an
+    anywhere-in-the-body search and this record is accepted again: its body opens
+    with prose, and the only matching heading sits inside a fenced example further
+    down — which is how a record quoting the format would slip through, or a draft
+    note above the heading would.
+
+    Synthetic on purpose. An earlier version of this test asserted that the real
+    ADR 0000 contained such an example; it does not — its only mention is a table
+    row carrying the literal `NNNN`, which the four-digit pattern cannot match. The
+    claim was false and the assertion pinned nothing.
     """
     tree = build_tree(tmp_path)
-    edit(adr(tree, "0002"), "status: accepted", "status: superseded")
-    edit(adr(tree, "0002"), "superseded-by: none", "superseded-by: 0005")
-
-    one_sided = run(tree, "--check")
-    assert one_sided.returncode != 0
-    assert "reciprocal" in one_sided.stderr
-
-    edit(adr(tree, "0005"), "supersedes: []", "supersedes: [0002]")
-    assert run(tree).returncode == 0, "a completed reciprocal link was still refused"
-
-
-def test_a_quoted_heading_in_the_body_is_not_mistaken_for_the_real_one(
-    tmp_path: Path,
-) -> None:
-    """ADR 0000 documents the heading format inside a fenced example.
-
-    Matching anywhere in the body would refuse that honest record and name the
-    quoted id. The real tree already contains this case, so the assertion is that
-    it keeps passing.
-    """
-    tree = build_tree(tmp_path)
-    assert (
-        "ADR NNNN"
-        in (tree / "docs" / "adr" / "0000-record-architecture-decisions.md").read_text()
+    target = adr(tree, "0001")
+    edit(
+        target,
+        "# ADR 0001 — No model in the transport path\n",
+        "> Draft note: still being written.\n\n```\n# ADR 0001 — No model in the transport path\n```\n",
     )
 
-    assert run(tree, "--check").returncode == 0
+    result = run(tree, "--check")
+
+    assert result.returncode != 0, (
+        "a heading found only later in the body satisfied the rule"
+    )
+    assert "body must open" in result.stderr
+    assert "0001-no-model-in-the-transport-path.md" in result.stderr

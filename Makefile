@@ -11,15 +11,16 @@
 
 PYTHON ?= python3
 
-.PHONY: quality lint format test test-unit adr-index help
+.PHONY: quality lint format test test-unit adr-index privacy help
 
 help:
-	@echo "quality    - everything CI runs: lint, format check, ADR index, tests"
+	@echo "quality    - everything CI runs: lint, format check, ADR index, privacy, tests"
 	@echo "lint       - ruff check"
 	@echo "format     - ruff format (rewrites files)"
 	@echo "test       - full test suite"
 	@echo "test-unit  - fast unit subset"
 	@echo "adr-index  - regenerate docs/adr/README.md"
+	@echo "privacy    - refuse tracked files carrying the private-content marker"
 
 # Read-only by construction: every step checks, none rewrites. A gate that
 # fixes what it finds stops meaning "the tree was already clean".
@@ -27,6 +28,7 @@ quality:
 	ruff check .
 	ruff format --check .
 	$(PYTHON) scripts/gen_adr_index.py --check
+	$(MAKE) privacy
 	$(MAKE) test
 
 lint:
@@ -50,3 +52,10 @@ test-unit: test
 
 adr-index:
 	$(PYTHON) scripts/gen_adr_index.py
+
+# Part of `quality`, not a command anyone has to remember: the leak this
+# refuses happens when attention is elsewhere, which is exactly when an
+# optional check does not get run. It catches a copied private finding that
+# brings its marker along; it cannot recognise unmarked content.
+privacy:
+	$(PYTHON) scripts/check_private_content.py

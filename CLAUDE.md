@@ -29,6 +29,24 @@ Never commit, in files, commit messages, issues, or PR descriptions:
 If you are unsure whether something is safe to publish, leave it out and say
 why.
 
+### The one rule with a mechanism behind it
+
+`make quality` refuses the tree when a tracked file carries the marker that the
+maintainer's private findings are required to open with (`scripts/check_private_content.py`).
+It runs in the gate, so it fires locally and in CI on every pull request without
+anyone choosing to run it, and the refusal names the file.
+
+**What it catches and what it does not.** It catches a copied finding that
+brings its marker along — the common case, and the one that happens by
+accident. It does not catch a marker that was stripped, and it cannot recognise
+real source data that was never marked; no heuristic for transcript-shaped or
+name-shaped text is attempted, because it would produce false confidence and
+false refusals alike. It sees only *tracked* files, so locally it judges what is
+staged or committed rather than what is merely written to disk. Every other rule
+above is unmechanised and rests on your care. Treat the guard as a seatbelt, not
+a vault: a check believed to be complete replaces the attention that does the
+real work.
+
 ## Accuracy rules
 
 - **Do not describe unverified behaviour as supported.** Wispr MCP capabilities
@@ -70,6 +88,7 @@ docs/architecture.md             boundaries, responsibilities, data flow
 docs/privacy-and-security.md     data handling and its honest limits
 docs/adr/                        architecture decision records (see below)
 scripts/gen_adr_index.py         regenerates docs/adr/README.md
+scripts/check_private_content.py refuses a tracked file carrying the private marker
 ```
 
 `scripts/` holds repository tooling, not product code. The "no code" status

@@ -23,8 +23,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 
 REPO = Path(__file__).resolve().parent.parent
 GUARD_PATH = "scripts/check_private_content.py"
@@ -79,7 +77,6 @@ def run(tree: Path, guard_at: str = GUARD_PATH) -> subprocess.CompletedProcess[s
     )
 
 
-@pytest.mark.xfail(strict=True, reason="guard not written yet")
 def test_marked_file_is_refused(tmp_path: Path) -> None:
     """A tracked file carrying the marker fails the gate, named in the message.
 
@@ -96,7 +93,6 @@ def test_marked_file_is_refused(tmp_path: Path) -> None:
     assert "docs/copied-finding.md" in result.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="guard not written yet")
 def test_clean_tree_passes_and_guard_ignores_itself(tmp_path: Path) -> None:
     """A tree with nothing marked passes — including the guard's own definition.
 
@@ -114,7 +110,6 @@ def test_clean_tree_passes_and_guard_ignores_itself(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="guard not written yet")
 def test_self_exclusion_is_not_path_hardcoded(tmp_path: Path) -> None:
     """Renaming and moving the guard breaks neither half of its behaviour.
 

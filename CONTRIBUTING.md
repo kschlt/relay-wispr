@@ -90,6 +90,15 @@ a few rules:
   meeting title, an account identifier, or any other real source data into this
   repository — including in issues and PR descriptions. Invent an example
   instead.
+
+  One narrow part of this is checked rather than trusted: `make quality` refuses
+  the tree when a tracked file carries the marker that the maintainer's private
+  verification findings are required to open with, and names the file. It
+  catches a finding copied in with its header attached — the accident, not the
+  decision. It does not catch a stripped marker, it cannot recognise real
+  content that was never marked, and it deliberately makes no attempt to guess
+  at transcript-shaped text, which would refuse innocent changes and still miss
+  real ones. The rest of this rule rests on care, as it did before.
 - **Nothing personal or private.** No credentials, no private hostnames, no
   local filesystem paths, no private repository names, no personal
   infrastructure details. This repository is public and permanent.

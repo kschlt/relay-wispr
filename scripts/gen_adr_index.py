@@ -1,14 +1,29 @@
 #!/usr/bin/env python3
 """Generate docs/adr/README.md from the ADR frontmatter, and validate it.
 
-The index is generated, never hand-edited (ADR 0000). This script is also the
-enforcer of the ADR state rules, because a rule nothing checks is a suggestion:
+The index is generated, never hand-edited (ADR 0000). This script also enforces
+every rule a SINGLE SNAPSHOT of the tree can decide, because a rule nothing checks
+is a suggestion:
 
   - `id` matches the filename's four-digit prefix, and ids are unique.
   - `status` is one of the four declared states.
   - a `superseded` ADR names its `superseded-by`, and a non-superseded one does not.
   - supersession is reciprocal: if A supersedes B, B is superseded-by A.
   - every referenced id exists.
+  - `title` agrees with the record's own `# ADR NNNN — ...` heading.
+  - the frontmatter is present, complete, and carries no unknown key.
+  - the committed index is in sync with all of the above.
+
+Four of ADR 0000's five numbered rules are deliberately OUT of reach here, and
+saying so is the point — an unstated gap reads as a check that exists:
+
+  - *status only moves forward* and *an accepted ADR is never rewritten* compare a
+    record against its own past, which a snapshot does not have.
+  - *numbers are permanent* needs the set of ids ever used, not the set present.
+  - *one decision per record* is a judgment call; a heuristic for it would refuse
+    honest records.
+
+Those four are enforced by review, not by this script.
 
 Standard library only, and runs on Python 3.9+ — deliberately wider than the 3.12+
 floor ADR 0008 sets for the adapter, since docs tooling should not be the thing that
@@ -64,6 +79,31 @@ def split_frontmatter(text: str, name: str) -> str:
     return text[4:end]
 
 
+HEADING_RE = re.compile(
+    r"^#[ \t]+ADR[ \t]+(\d{4})[ \t]+\u2014[ \t]+(.+?)[ \t]*$", re.MULTILINE
+)
+
+
+def heading_of(text: str, name: str) -> tuple[str, str]:
+    """The `# ADR NNNN — <title>` heading's id and title, or raise.
+
+    Parsed from the body rather than carried out of `split_frontmatter`, which
+    deliberately returns the frontmatter block alone: handing the body back is
+    what previously let the body be passed where a filename was expected.
+
+    A record with NO heading raises rather than being skipped. Tolerating it would
+    reproduce, in a new place, the silent acceptance this check exists to close.
+    """
+    m = HEADING_RE.search(text)
+    if not m:
+        raise AdrError(
+            f"{name}: no `# ADR NNNN \u2014 <title>` heading found in the body. "
+            "ADR 0000 requires one, and its title is what the frontmatter title is "
+            "checked against."
+        )
+    return m.group(1), m.group(2)
+
+
 def parse_frontmatter(block: str, name: str) -> dict[str, object]:
     """Parse the flat key/value + inline-list shape ADR 0000 declares."""
     out: dict[str, object] = {}
@@ -106,8 +146,21 @@ def load() -> list[dict[str, object]]:
         m = FILENAME_RE.match(path.name)
         if not m:
             raise AdrError(f"{path.name}: filename must be NNNN-lowercase-slug.md")
-        block = split_frontmatter(path.read_text(encoding="utf-8"), path.name)
+        raw = path.read_text(encoding="utf-8")
+        block = split_frontmatter(raw, path.name)
         fm = parse_frontmatter(block, path.name)
+        heading_id, heading_title = heading_of(raw, path.name)
+        if heading_id != fm["id"]:
+            raise AdrError(
+                f"{path.name}: heading id {heading_id!r} disagrees with frontmatter "
+                f"id {fm['id']!r}"
+            )
+        if heading_title != fm["title"]:
+            raise AdrError(
+                f"{path.name}: frontmatter title {fm['title']!r} disagrees with the "
+                f"body heading {heading_title!r}. ADR 0000 requires them to match; "
+                "a drifted title renders a wrong index that every other check passes."
+            )
         if fm["id"] != m.group(1):
             raise AdrError(
                 f"{path.name}: frontmatter id {fm['id']!r} != filename prefix {m.group(1)!r}"
@@ -230,7 +283,9 @@ def render(adrs: list[dict[str, object]]) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # `python3 -OO` strips docstrings, so __doc__ is None there.
+    summary = (__doc__ or "Generate and validate the ADR index.").splitlines()[0]
+    ap = argparse.ArgumentParser(description=summary)
     ap.add_argument(
         "--check",
         action="store_true",

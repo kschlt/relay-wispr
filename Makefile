@@ -35,11 +35,11 @@ lint:
 format:
 	ruff format .
 
-# pytest exits 5 when it collects nothing. There is no suite yet, so an empty
-# collection is tolerated here and ONLY here. The first test makes this
-# unreachable; it is not a permanent escape hatch.
+# The empty-collection tolerance that used to live here is gone: a suite now
+# exists, so pytest's exit 5 would mean the tests stopped being collected —
+# exactly the failure worth seeing rather than forgiving.
 test:
-	pytest -q || [ $$? -eq 5 ]
+	pytest -q
 
 # No unit subset exists yet, so the "unit" command IS the full suite. That is
 # deliberate: the seal gate runs whatever this names and never silently skips,

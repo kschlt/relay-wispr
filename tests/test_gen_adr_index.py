@@ -18,7 +18,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = REPO / "scripts" / "gen_adr_index.py"
@@ -26,8 +25,8 @@ ADRS = REPO / "docs" / "adr"
 
 
 def build_tree(tmp_path: Path) -> Path:
-    tmp_path.mkdir(parents=True, exist_ok=True)
     """A throwaway copy of the real repository layout the script expects."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
     (tmp_path / "scripts").mkdir()
     (tmp_path / "docs").mkdir()
     shutil.copy(SCRIPT, tmp_path / "scripts" / "gen_adr_index.py")
@@ -56,7 +55,6 @@ def edit(path: Path, old: str, new: str) -> None:
 # --- the rule ADR 0000 declares and nothing checked -------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="title/heading agreement is not yet checked")
 def test_title_heading_mismatch_refused(tmp_path: Path) -> None:
     """A frontmatter title that disagrees with its body heading is refused.
 
@@ -79,7 +77,6 @@ def test_title_heading_mismatch_refused(tmp_path: Path) -> None:
     assert "No model in the transport path" in result.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="title/heading agreement is not yet checked")
 def test_title_heading_match_accepted(tmp_path: Path) -> None:
     """Agreement is accepted; a record with no heading at all is refused.
 
@@ -117,7 +114,6 @@ REFUSALS = [
 ]
 
 
-@pytest.mark.xfail(strict=True, reason="the inventory's last entry has no refusal yet")
 def test_existing_refusals_still_fire(tmp_path: Path) -> None:
     """Every fault the generator refuses, refused, with the file named.
 
@@ -153,7 +149,6 @@ def test_existing_refusals_still_fire(tmp_path: Path) -> None:
     assert not failures, "\n".join(failures)
 
 
-@pytest.mark.xfail(strict=True, reason="__doc__ read is unguarded under -OO")
 def test_runs_under_optimised_interpreter(tmp_path: Path) -> None:
     """`python3 -OO` strips docstrings; reading __doc__ unguarded raises there."""
     tree = build_tree(tmp_path)

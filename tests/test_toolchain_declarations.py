@@ -18,8 +18,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 
 REPO = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO / ".github" / "workflows" / "quality.yml"
@@ -73,7 +71,6 @@ def test_every_workflow_action_is_pinned_to_a_commit_sha_naming_its_tag():
     )
 
 
-@pytest.mark.xfail(strict=True, reason="the Makefile declares no floor to agree with")
 def test_the_python_floor_agrees_across_the_adr_the_makefile_and_the_workflow():
     """One floor, declared in three places that cannot read each other.
 

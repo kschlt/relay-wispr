@@ -47,6 +47,18 @@ above is unmechanised and rests on your care. Treat the guard as a seatbelt, not
 a vault: a check believed to be complete replaces the attention that does the
 real work.
 
+### The interpreter the gate runs on
+
+`make quality` refuses any interpreter below the floor ADR 0008 declares,
+naming the required version and the one it found. It is checked when the
+Makefile is parsed, so every target passes through it and there is nothing to
+forget to call.
+
+If it refuses, point it at a conforming interpreter. Do not lower the floor, do
+not add a skip, and do not special-case the environment — each of those puts
+the defect back somewhere harder to see. The floor is an accepted decision, so
+changing it means a superseding ADR, not an edit to the Makefile.
+
 ## Accuracy rules
 
 - **Do not describe unverified behaviour as supported.** Wispr MCP capabilities

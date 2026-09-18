@@ -21,6 +21,13 @@ It needs `ruff` and `pytest` at the pinned versions in `requirements-dev.txt`,
 and it checks rather than rewrites, so a green run means the tree was already
 clean. `make help` lists the rest.
 
+The gate also refuses to run at all on an interpreter below the version this
+project targets, naming the version it requires and the one it found. There is
+no skip and no exception: a green run on an older interpreter is a local
+verdict CI can contradict, which is worse than not having run it. If your
+default `python3` is older than the floor, point the gate at a newer one — the
+refusal says how.
+
 The immediate work is **verifying what the Wispr Flow MCP server can actually
 do** — for discovery, reading, pagination, and stable identity, treating
 meetings and Scratchpad notes as separate questions. Implementation decisions

@@ -11,6 +11,30 @@
 
 PYTHON ?= python3
 
+# The interpreter floor, enforced rather than assumed. ADR 0008 declares Python
+# 3.12 or later; CI installed it and nothing local checked, so this gate was
+# observed running green end to end on 3.11 — a local verdict CI could
+# contradict, which is the split a single definition of the gate exists to
+# prevent.
+#
+# Checked here, at parse time, rather than inside a target: every target below
+# passes through it, including the sub-makes `quality` invokes and any target
+# added later. A check that one entry point performs is a check the other entry
+# points do not have. It reads a version and changes nothing.
+#
+# It therefore refuses `make help` too. That is deliberate. On a machine whose
+# interpreter is wrong, that is the first thing worth knowing, and a check with
+# an exception in it is a check someone will find the exception to.
+PYTHON_FLOOR := 3.12
+PYTHON_ACTUAL := $(shell $(PYTHON) -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null)
+PYTHON_CONFORMS := $(shell $(PYTHON) -c 'import sys; print(sys.version_info[:2] >= tuple(int(n) for n in "$(PYTHON_FLOOR)".split(".")))' 2>/dev/null)
+
+ifeq ($(PYTHON_ACTUAL),)
+$(error PYTHON=$(PYTHON) is not a usable interpreter. This project requires Python $(PYTHON_FLOOR) or later — see docs/adr/0008-implementation-runtime-python.md. Re-run with a conforming one, e.g. make PYTHON=python$(PYTHON_FLOOR) <target>)
+else ifneq ($(PYTHON_CONFORMS),True)
+$(error PYTHON=$(PYTHON) is Python $(PYTHON_ACTUAL). This project requires Python $(PYTHON_FLOOR) or later — see docs/adr/0008-implementation-runtime-python.md. Re-run with a conforming one, e.g. make PYTHON=python$(PYTHON_FLOOR) <target>)
+endif
+
 .PHONY: quality lint format test test-unit adr-index privacy help
 
 help:

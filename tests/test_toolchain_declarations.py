@@ -46,7 +46,6 @@ def declared(path: Path, pattern: str) -> str | None:
     return match.group(1) if match else None
 
 
-@pytest.mark.xfail(strict=True, reason="actions still float on mutable tags")
 def test_every_workflow_action_is_pinned_to_a_commit_sha_naming_its_tag():
     """A tag can be repointed under a branch nobody touched; a commit cannot.
 

@@ -90,7 +90,9 @@ around one is the failure the directory exists to prevent.
 ## Documentation standards
 
 The documents in this repository are the product right now, so they are held to
-a few rules:
+a few rules. How the prose is formatted is not among them — that is left to
+review rather than checked by a gate
+([ADR 0011](docs/adr/0011-prose-formatting-is-left-to-review.md)). The rules:
 
 - **Do not claim unverified behaviour.** If connector support is unknown, the
   text says it is unknown. "Supports Scratchpad notes" is not something this

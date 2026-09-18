@@ -84,7 +84,7 @@ def test_title_heading_match_accepted(tmp_path: Path) -> None:
 
     Both halves matter. Every heading in this repository reads
     `# ADR NNNN — <title>` while the frontmatter carries only the title, so a
-    naive equality check would refuse all eleven records. And a record with no
+    naive equality check would refuse all twelve records. And a record with no
     heading is as much a defect as one whose heading disagrees — tolerating it
     silently would reproduce the bug in a new place, which is why the accepting
     half is asserted together with that refusal rather than on its own, where it
@@ -94,7 +94,7 @@ def test_title_heading_match_accepted(tmp_path: Path) -> None:
 
     clean = run(tree, "--check")
     assert clean.returncode == 0, clean.stderr
-    assert "11 record(s)" in clean.stdout
+    assert "12 record(s)" in clean.stdout
 
     target = adr(tree, "0001")
     edit(target, "# ADR 0001 — No model in the transport path\n", "")

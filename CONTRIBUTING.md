@@ -5,9 +5,21 @@ stage, and what is useful right now is narrower than usual.
 
 ## Current stage
 
-This repository holds **design documents only**. There is no build, no test
-suite, no package, and no code to run. There is therefore nothing to set up:
-clone it and read.
+The **product** is still design documents only: there is no package, no CLI,
+no library, and no adapter code to run.
+
+The repository does now carry a little tooling of its own — an ADR index
+generator and a quality gate that runs on every pull request. If you are only
+reading, clone it and read; nothing needs setting up. If you are changing
+files, run the gate before you push:
+
+```
+make quality
+```
+
+It needs `ruff` and `pytest` at the pinned versions in `requirements-dev.txt`,
+and it checks rather than rewrites, so a green run means the tree was already
+clean. `make help` lists the rest.
 
 The immediate work is **verifying what the Wispr Flow MCP server can actually
 do** — for discovery, reading, pagination, and stable identity, treating

@@ -56,6 +56,10 @@ relay-wispr is not, and is not on a path to become:
 These are not "later" items. They are other people's jobs, and the value of
 this project depends on it not taking them on.
 
+Each goal and non-goal above is a decision that was taken rather than a
+preference that drifted in. The reasoning, and what was rejected, is in
+[docs/adr/](docs/adr/README.md).
+
 ## What success looks like
 
 The project has succeeded when all of the following hold:

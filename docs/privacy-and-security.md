@@ -39,7 +39,9 @@ in its documentation.
 
 ### Payloads go only where the operator designated
 
-Captured content is written to storage the operator explicitly configured.
+Captured content is written to storage the operator explicitly configured, and
+nowhere else — including no working or planning repository that happens to be
+private and convenient ([ADR 0007](adr/0007-captured-content-lives-only-in-operator-designated-storage.md)).
 Where that storage is private, the burden of keeping it private sits with its
 configuration, not with this adapter.
 

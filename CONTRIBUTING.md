@@ -5,9 +5,21 @@ stage, and what is useful right now is narrower than usual.
 
 ## Current stage
 
-This repository holds **design documents only**. There is no build, no test
-suite, no package, and no code to run. There is therefore nothing to set up:
-clone it and read.
+The **product** is still design documents only: there is no package, no CLI,
+no library, and no adapter code to run.
+
+The repository does now carry a little tooling of its own — an ADR index
+generator and a quality gate that runs on every pull request. If you are only
+reading, clone it and read; nothing needs setting up. If you are changing
+files, run the gate before you push:
+
+```
+make quality
+```
+
+It needs `ruff` and `pytest` at the pinned versions in `requirements-dev.txt`,
+and it checks rather than rewrites, so a green run means the tree was already
+clean. `make help` lists the rest.
 
 The immediate work is **verifying what the Wispr Flow MCP server can actually
 do** — for discovery, reading, pagination, and stable identity, treating
@@ -23,6 +35,11 @@ depend on those answers, so making them now would be guessing.
 - **Boundary critique.** If the split in
   [docs/architecture.md](docs/architecture.md) is wrong — a responsibility on
   the wrong side, a non-goal that cannot hold — argue it before it is code.
+  The reasoning you would be arguing against is in
+  [docs/adr/](docs/adr/README.md), including what each decision rejected and
+  what would reopen it. Read the relevant record first; it may already answer
+  you, and if it does not, it tells you exactly what the counter-argument has
+  to beat.
 - **Privacy review.** If
   [docs/privacy-and-security.md](docs/privacy-and-security.md) overclaims
   anything, that is a defect worth reporting.
@@ -43,6 +60,21 @@ depend on those answers, so making them now would be guessing.
 - **Use a branch and a pull request.** The default branch takes no direct
   pushes; every change after the initial commit lands through a PR.
 - **One concern per PR**, with a description saying what changed and why.
+
+## Changing a decision
+
+Decisions live in [docs/adr/](docs/adr/README.md), one per record.
+
+An accepted ADR is never rewritten to say something else — its decision is a
+historical fact, and the reasoning that looked right at the time is the most
+useful thing it carries. Changing course means a **new** record that supersedes
+the old one, naming it. [ADR 0000](docs/adr/0000-record-architecture-decisions.md)
+has the format and the rules.
+
+Two practical notes: `docs/adr/README.md` is generated — edit frontmatter and run
+`python3 scripts/gen_adr_index.py`, never the index itself. And if a change you
+are proposing contradicts an accepted ADR, say so explicitly and name it.
+Silently working around one is the failure the directory exists to prevent.
 
 ## Documentation standards
 

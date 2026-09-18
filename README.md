@@ -1,8 +1,11 @@
 # relay-wispr
 
-A source adapter that turns [Wispr Flow](https://wisprflow.ai) meetings and
-Scratchpad notes into source-independent capture records, without asking a
+A Relay source adapter. It turns [Wispr Flow](https://wisprflow.ai) meetings
+and Scratchpad notes into source-independent capture records, without asking a
 language model to retype the content.
+
+*Relay* is the routing layer those records are handed to. Nothing here depends
+on it — the contract is the record shape, not the consumer's identity.
 
 > ## Status: pre-alpha — no working software yet
 >
@@ -47,6 +50,11 @@ relay-wispr aims to be a **thin, replaceable edge adapter**:
 The point of the boundary is that the layer consuming these records should not
 know that Wispr Flow exists. Adding a second capture source later should mean
 writing a second adapter, not reworking everything downstream.
+
+The consumer this is built for is **Relay**, which owns routing and delivery.
+But the contract is the record shape, not Relay: nothing here depends on Relay
+being present, and the records are equally readable by a script, a document
+store, or a plain directory. Relay is the first consumer, not a requirement.
 
 ### Illustrative record shape
 

@@ -41,7 +41,8 @@ record — where it sends it, how it decides — is Relay's concern and is not
 described here.
 
 Relay is named because it is the reason this adapter exists, not because it is
-required ([ADR 0006](adr/0006-relay-is-named-not-depended-on.md)). The contract is the record shape; the consumer's identity is not part
+required ([ADR 0006](adr/0006-relay-is-named-not-depended-on.md)).
+The contract is the record shape; the consumer's identity is not part
 of it. The same records are readable by a script, a document store, or a plain
 directory, and relay-wispr has no runtime dependency on Relay. A second capture
 vendor gets a second adapter emitting the same records — that substitutability
@@ -142,10 +143,10 @@ than it appears to, discovered later, with an unknowable gap in the record.
 ## Verification comes first
 
 The design above assumes connector capabilities that **have not been measured**
-([ADR 0002](adr/0002-verify-before-designing.md)). Before implementation, each of
-these must be established independently for meetings and for Scratchpad notes —
-separately, because a finding on one surface is not evidence about the other
-([ADR 0004](adr/0004-each-source-surface-is-verified-independently.md)):
+([ADR 0002](adr/0002-verify-before-designing.md)). Before implementation, each
+of these must be established independently for meetings and for Scratchpad
+notes — separately, because a finding on one surface is not evidence about the
+other ([ADR 0004](adr/0004-each-source-surface-is-verified-independently.md)):
 
 - What search and filtering the MCP server supports, and whether results can be
   scoped incrementally.

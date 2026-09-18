@@ -5,3 +5,19 @@
 # it. Bumping these is a deliberate change with its own diff.
 ruff==0.15.8
 pytest==9.0.2
+
+# What is deliberately NOT enforced, said here so that an unenforced rule is not
+# mistaken for an unnoticed gap.
+#
+# ADR 0008 names **uv** for environments alongside these two. Nothing in this
+# repository requires it, installs it, or checks for it, and that is on purpose:
+# there is no package to manage yet, so it records an intention for when there
+# is one. How you create the environment these go into is your choice.
+#
+# These pins are themselves advisory outside CI. CI installs exactly these
+# versions; the quality gate runs whatever `ruff` and `pytest` it finds and does
+# not compare them against this file, so a contributor on a different ruff can
+# see a verdict CI does not share. Closing that would mean managing the
+# environment, which is the packaging story this project has not started. The
+# interpreter floor is enforced because the Makefile already has to name an
+# interpreter to run anything at all; these two do not, so they are not.

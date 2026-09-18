@@ -19,7 +19,9 @@ make quality
 
 It needs `ruff` and `pytest` at the pinned versions in `requirements-dev.txt`,
 and it checks rather than rewrites, so a green run means the tree was already
-clean. `make help` lists the rest.
+clean. `make help` lists the rest. ADR 0008 also names `uv`, but nothing here
+requires or checks it — `requirements-dev.txt` records which of the toolchain
+declarations are enforced and which are deliberately advisory.
 
 The gate also refuses to run at all on an interpreter below the version this
 project targets, naming the version it requires and the one it found. There is
